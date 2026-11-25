@@ -1,6 +1,8 @@
 import { motion } from "framer-motion";
 import type { Profile } from "../types";
+import Icon from "./Icon";
 
+/** "It's a match" screen: two tilted photo cards linked by a heart badge. */
 export default function MatchPopup({
   me,
   them,
@@ -16,52 +18,50 @@ export default function MatchPopup({
 }) {
   return (
     <motion.div
-      className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/70 backdrop-blur px-6"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/60 px-5 backdrop-blur-sm"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={onClose}
     >
       <motion.div
-        initial={{ scale: 0.8, y: 20 }}
+        initial={{ scale: 0.85, y: 24 }}
         animate={{ scale: 1, y: 0 }}
-        className="text-center"
+        transition={{ type: "spring", damping: 20, stiffness: 260 }}
+        className="card w-full max-w-sm overflow-hidden bg-paper"
+        onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-4xl font-extrabold text-brand drop-shadow">It's a match!</h2>
-        <p className="text-white/80 mt-1">
-          You and {them.name} liked each other.
-        </p>
-
-        <div className="mt-6 flex items-center justify-center -space-x-4">
+        <div className="relative flex h-60 items-center justify-center">
           <img
             src={me.photos[0]}
-            alt="you"
-            className="h-28 w-28 rounded-full object-cover border-4 border-brand"
+            alt="You"
+            className="absolute left-[16%] top-8 h-40 w-32 -rotate-6 rounded-2xl border-2 border-ink object-cover shadow-brut"
           />
           <img
             src={them.photos[0]}
             alt={them.name}
-            className="h-28 w-28 rounded-full object-cover border-4 border-white"
+            className="absolute right-[16%] top-10 h-40 w-32 rotate-6 rounded-2xl border-2 border-ink object-cover shadow-brut"
           />
+          <span className="absolute top-[6.5rem] z-10 flex h-14 w-14 items-center justify-center rounded-full border-2 border-ink bg-coral text-white shadow-brut">
+            <Icon name="heart" size={26} />
+          </span>
         </div>
 
-        <div className="mt-8 space-y-3 w-64 mx-auto">
-          <button
-            onClick={onMessage}
-            className="w-full rounded-full bg-brand text-white font-semibold py-3"
-          >
-            Send a message
-          </button>
-          <button
-            onClick={onGoToMatches}
-            className="w-full rounded-full border border-white/40 text-white py-3"
-          >
-            See all matches
-          </button>
-          <button
-            onClick={onClose}
-            className="w-full rounded-full text-white/80 py-2 text-sm"
-          >
-            Keep swiping
-          </button>
+        <div className="px-6 pb-6 text-center">
+          <h2 className="text-3xl font-bold tracking-tight">It's a match!</h2>
+          <p className="mt-1 text-sm text-ink/60">You and {them.name} liked each other.</p>
+
+          <div className="mt-6 space-y-3">
+            <button onClick={onMessage} className="btn btn-coral w-full">
+              <Icon name="chat" size={18} /> Send a message
+            </button>
+            <button onClick={onGoToMatches} className="btn btn-white w-full">
+              See all matches
+            </button>
+            <button onClick={onClose} className="btn-ghost w-full text-sm">
+              Keep swiping
+            </button>
+          </div>
         </div>
       </motion.div>
     </motion.div>

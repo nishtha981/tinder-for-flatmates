@@ -50,7 +50,8 @@ export interface Profile {
   name: string;
   age: number;
   gender: Gender;
-  photos: string[]; // data URLs (expect 2)
+  photos: string[]; // signed image URLs from the API, or data: URLs for not-yet-uploaded picks (expect 2)
+  photoKeys?: string[]; // object-storage keys behind `photos`, set by the API
   areas: Area[]; // areas they're looking in
   budgetMin: number; // monthly rent, INR
   budgetMax: number;

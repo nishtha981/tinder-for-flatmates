@@ -10,14 +10,84 @@ body,
 
 body {
   margin: 0;
-  background: linear-gradient(160deg, #eef0fc 0%, #e6e9fb 100%);
-  color: #22243a;
+  color: #16131f;
+  color-scheme: light;
   -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+  /* Grid-paper background */
+  background-color: #f6f2ff;
+  background-image:
+    linear-gradient(rgba(101, 71, 202, 0.09) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(101, 71, 202, 0.09) 1px, transparent 1px);
+  background-size: 36px 36px;
 }
 
-@media (prefers-color-scheme: dark) {
-  body {
-    background: linear-gradient(160deg, #16182a 0%, #121327 100%);
-    color: #eef0f7;
+@layer components {
+  /* Outlined surface with a hard offset shadow */
+  .card {
+    @apply rounded-3xl border-2 border-ink bg-white shadow-brut;
   }
+
+  /* Pill buttons that "press" into their shadow */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-full border-2 border-ink px-5 py-3 font-bold shadow-brut transition-all duration-100 select-none;
+    @apply hover:-translate-x-px hover:-translate-y-px hover:shadow-brut-lg;
+    @apply active:translate-x-[3px] active:translate-y-[3px] active:shadow-none;
+    @apply disabled:pointer-events-none disabled:opacity-50;
+  }
+  .btn-coral {
+    @apply bg-coral text-white;
+  }
+  .btn-violet {
+    @apply bg-violet text-white;
+  }
+  .btn-white {
+    @apply bg-white text-ink;
+  }
+  .btn-ghost {
+    @apply rounded-full px-4 py-2 font-semibold text-ink/70 transition hover:text-ink;
+  }
+
+  /* Round icon button */
+  .icon-btn {
+    @apply inline-flex items-center justify-center rounded-full border-2 border-ink bg-white shadow-brut-sm transition-all duration-100;
+    @apply active:translate-x-[2px] active:translate-y-[2px] active:shadow-none;
+  }
+
+  .chip {
+    @apply rounded-full border-2 border-ink bg-white px-3.5 py-1.5 text-sm font-semibold transition-all duration-100;
+  }
+  .chip-on {
+    @apply bg-violet text-white shadow-brut-sm;
+  }
+
+  .field {
+    @apply w-full rounded-2xl border-2 border-ink bg-white px-4 py-3 text-sm outline-none transition placeholder:text-ink/40;
+    @apply focus:shadow-brut-sm;
+  }
+
+  .label {
+    @apply mb-2 block text-xs font-bold uppercase tracking-wider text-ink/60;
+  }
+
+  /* Tag used on cards and the profile */
+  .tag {
+    @apply rounded-full border-2 border-ink bg-violet-tint px-2.5 py-0.5 text-xs font-semibold;
+  }
+
+  /* Pastel header bar, like the reference's screen headers */
+  .bar {
+    @apply border-b-2 border-ink bg-violet-tint;
+  }
+}
+
+/* Range sliders in brand style */
+input[type="range"] {
+  @apply h-2 w-full cursor-pointer appearance-none rounded-full border-2 border-ink bg-white;
+}
+input[type="range"]::-webkit-slider-thumb {
+  @apply h-6 w-6 appearance-none rounded-full border-2 border-ink bg-coral shadow-brut-sm;
+}
+input[type="range"]::-moz-range-thumb {
+  @apply h-5 w-5 rounded-full border-2 border-ink bg-coral;
 }
