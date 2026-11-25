@@ -17,6 +17,8 @@ export default defineConfig({
         APP_ORIGIN: { value: process.env.APP_ORIGIN, required: false },
         // Used to seal live queries. Read from .env.local at deploy time (neon deploy --env .env.local).
         REALTIME_SECRET: { value: process.env.NEON_REALTIME_SECRET, required: true },
+        // 2Factor SMS OTP API key. Read from .env.local at deploy time.
+        TWOFACTOR_API_KEY: { value: process.env.TWOFACTOR_API_KEY, required: true },
       },
     },
   },

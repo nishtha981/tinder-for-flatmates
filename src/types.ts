@@ -64,7 +64,7 @@ export interface Profile {
 export interface User {
   id: string;
   mobile: string;
-  email: string;
+  email?: string; // optional: phone-first signup doesn't collect email
   profile?: Profile;
 }
 

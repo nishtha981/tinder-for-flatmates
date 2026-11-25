@@ -52,8 +52,13 @@ const post = <T>(path: string, body?: unknown) =>
 
 // ---- Account ---------------------------------------------------------------
 
-export async function register(mobile: string, email: string): Promise<User> {
-  const { token, user } = await post<{ token: string; user: User }>("/api/register", { mobile, email });
+/** Step 1 of phone-first auth: SMS an OTP and learn whether this number already has an account. */
+export const startOtp = (mobile: string) =>
+  post<{ registered: boolean }>("/api/otp/start", { mobile });
+
+/** Step 2: verify the OTP. On success, logs in (existing) or creates (new) the account and stores the token. */
+export async function verifyOtp(mobile: string, otp: string): Promise<User> {
+  const { token, user } = await post<{ token: string; user: User }>("/api/otp/verify", { mobile, otp });
   setToken(token);
   return user;
 }

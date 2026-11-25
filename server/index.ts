@@ -2,9 +2,9 @@
  * FlatMate API — a Hono app deployed as a Neon Function (slug "api").
  * Postgres via pg, photos in the private "assets" bucket, chat via Neon Realtime sealed live queries.
  *
- * Auth: registration issues an opaque session token (only its hash is stored). Every route below
- * derives the user from that token; no route trusts a user id sent by the client.
- * NOTE: the OTP is still a mock, so registration does not yet prove ownership of the phone number.
+ * Auth: phone-first SMS OTP via 2Factor. /api/otp/start SMSes a code; /api/otp/verify checks it and
+ * then logs in an existing user or creates a new one, issuing an opaque session token (only its hash
+ * is stored). Every route below derives the user from that token; no route trusts a client-sent id.
  */
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { waitUntil } from "@neon/functions";
@@ -119,22 +119,68 @@ app.get("/api/health", async (c) => {
   });
 });
 
-/** Mock-OTP registration: finds or creates the user by mobile number and issues a session token. */
-app.post("/api/register", async (c) => {
-  const { mobile, email } = await c.req.json<{ mobile?: string; email?: string }>();
-  if (!mobile || !/^[6-9]\d{9}$/.test(mobile)) throw new HTTPException(400, { message: "Invalid mobile" });
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new HTTPException(400, { message: "Invalid email" });
+// ---- SMS OTP (2Factor) -----------------------------------------------------
+// AUTOGEN lets 2Factor generate + SMS the code; VERIFY3 checks it by phone number, so the server
+// stays stateless (no OTP/session row to store). To use a custom DLT template instead of 2Factor's
+// default sender, append the approved template name: `/SMS/{mobile}/AUTOGEN/{templateName}`.
 
+const twoFactorKey = () => process.env.TWOFACTOR_API_KEY;
+const validMobile = (m?: string): m is string => !!m && /^[6-9]\d{9}$/.test(m);
+
+interface TwoFactorResponse {
+  Status: string;
+  Details: string;
+}
+
+/** Ask 2Factor to generate an OTP and SMS it to the number. Throws if the send fails. */
+async function sendOtp(mobile: string): Promise<void> {
+  const key = twoFactorKey();
+  if (!key) throw new HTTPException(500, { message: "SMS OTP is not configured" });
+  const res = await fetch(`https://2factor.in/API/V1/${key}/SMS/${mobile}/AUTOGEN`);
+  const data = (await res.json().catch(() => null)) as TwoFactorResponse | null;
+  if (!res.ok || data?.Status !== "Success") {
+    console.error("2Factor send failed:", res.status, data?.Details);
+    throw new HTTPException(502, { message: "Couldn't send the OTP. Please try again." });
+  }
+}
+
+/** Verify the entered OTP against 2Factor by phone number. Returns whether it matched. */
+async function verifyOtp(mobile: string, otp: string): Promise<boolean> {
+  const key = twoFactorKey();
+  if (!key) throw new HTTPException(500, { message: "SMS OTP is not configured" });
+  const res = await fetch(`https://2factor.in/API/V1/${key}/SMS/VERIFY3/${mobile}/${encodeURIComponent(otp)}`);
+  const data = (await res.json().catch(() => null)) as TwoFactorResponse | null;
+  return data?.Status === "Success";
+}
+
+/** Step 1: validate the number, SMS an OTP, and report whether the number is already registered. */
+app.post("/api/otp/start", async (c) => {
+  const { mobile } = await c.req.json<{ mobile?: string }>();
+  if (!validMobile(mobile)) throw new HTTPException(400, { message: "Enter a valid 10-digit mobile number" });
+  const { rows } = await pool.query("SELECT 1 FROM users WHERE mobile = $1", [mobile]);
+  await sendOtp(mobile);
+  return c.json({ registered: rows.length > 0 });
+});
+
+/** Step 2: verify the OTP, then log in the existing user or create a new one, and issue a token. */
+app.post("/api/otp/verify", async (c) => {
+  const { mobile, otp } = await c.req.json<{ mobile?: string; otp?: string }>();
+  if (!validMobile(mobile)) throw new HTTPException(400, { message: "Enter a valid 10-digit mobile number" });
+  if (!otp || !/^\d{4,8}$/.test(otp.trim())) throw new HTTPException(400, { message: "Enter the OTP" });
+  if (!(await verifyOtp(mobile, otp.trim()))) throw new HTTPException(401, { message: "Incorrect or expired OTP" });
+
+  // Find-or-create by mobile. DO UPDATE (not DO NOTHING) so an existing row is still RETURNED.
   const { rows } = await pool.query<{ id: string }>(
-    `INSERT INTO users (id, mobile, email) VALUES ($1, $2, $3)
-     ON CONFLICT (mobile) DO UPDATE SET email = EXCLUDED.email
+    `INSERT INTO users (id, mobile) VALUES ($1, $2)
+     ON CONFLICT (mobile) DO UPDATE SET mobile = EXCLUDED.mobile
      RETURNING id`,
-    [`u_${randomUUID()}`, mobile, email]
+    [`u_${randomUUID()}`, mobile]
   );
   const userId = rows[0].id;
   const token = randomBytes(32).toString("base64url");
   await pool.query("INSERT INTO sessions (token_hash, user_id) VALUES ($1, $2)", [sha256(token), userId]);
-  return c.json({ token, user: { id: userId, mobile, email, profile: await getProfile(userId) } });
+  const { rows: u } = await pool.query("SELECT id, mobile, email FROM users WHERE id = $1", [userId]);
+  return c.json({ token, user: { ...u[0], profile: await getProfile(userId) } });
 });
 
 app.get("/api/me", async (c) => {
